@@ -21,7 +21,7 @@ public class Pos_emu_modules {
      */
     public static void main(String[] args) {
         // Icc type
-        C_icc.SmartCardManagementType smartCardType = C_icc.SmartCardManagementType.SMARTCARD_PCSC;
+        C_icc.SmartCardManagementType smartCardType = C_icc.SmartCardManagementType.SMARTCARD_VIRTUAL;
         // Create ICC module
         C_icc m_icc;
         C_err.Icc retIcc;

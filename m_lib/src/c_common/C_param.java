@@ -44,6 +44,11 @@ public class C_param {
      */
     private final String conf_file;
  
+    /**
+     * Type of the reader : "virtual" or "pcsc"
+     */
+    private String reader_type;
+  
     ///////////////////////////////////////////////////////
 
     /**
@@ -62,6 +67,22 @@ public class C_param {
      */
     public String getFilename() {
         return conf_file;
+    }
+
+    /**
+     * Returns the type of the reader : pscs or virtual
+     * @return String containing the type of reader
+     */
+    public String getReader_type() {
+        return reader_type;
+    }
+
+    /**
+     * Set the type of the reader
+     * @param reader_type String containing the type of reader : "virtual" or "pcsc"
+     */
+    public void setReader_type(String reader_type) {
+        this.reader_type = reader_type;
     }
     
     /**

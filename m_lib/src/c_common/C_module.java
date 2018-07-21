@@ -38,7 +38,11 @@ public abstract class C_module {
     /**
      * Parameter class
      */
-    private C_param m_param;
+    protected C_param m_param;
+    /**
+     * Type of the reader : "virtual" or "pcsc"
+     */
+    protected String reader_type;
 
     /**
      * Constructor of c_module class
@@ -56,6 +60,7 @@ public abstract class C_module {
         moduleVersion = m_param.GetVersion();
         modulePort = m_param.getIp_port();
         moduleType = m_param.getModule_type();
+        reader_type = m_param.getReader_type();
     }
     
     /**
@@ -134,5 +139,21 @@ public abstract class C_module {
     public void setModuleType(String moduleType) {
         this.moduleType = moduleType;
     }
+
+    /**
+     * Returns the type of the reader : pscs or virtual
+     * @return String containing the type of reader
+     */
+    public String getReader_type() {
+        return reader_type;
+    }
+
+    /**
+     * Set the type of the reader
+     * @param reader_type String containing the type of reader : "virtual" or "pcsc"
+     */
+    public void setReader_type(String reader_type) {
+        this.reader_type = reader_type;
+    } 
     
 }
