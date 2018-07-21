@@ -100,18 +100,10 @@ public abstract class C_icc extends C_module {
     public abstract String IccGetATR(int readerId);
     
     /**
-     * Converts a byte array to a HEX string
-     * @param bytes array to convert
-     * @return String containing the array displayable
+     * <p>Performs the smart-card EMV selection based on provided AID</p>
+     * This function will perform all the SELECT commands to the smart-card
+     * @param readerId Index of the reader
+     * @return String containing the selected AID
      */
-    private final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for ( int j = 0; j < bytes.length; j++ ) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
-    }    
+    public abstract String IccPerformSelection(int readerId);
 }

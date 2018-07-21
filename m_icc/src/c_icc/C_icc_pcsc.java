@@ -7,6 +7,7 @@ package c_icc;
  */
 
 
+import c_common.C_conv;
 import c_common.C_err;
 import javax.smartcardio.ATR;
 import javax.smartcardio.Card;
@@ -122,9 +123,20 @@ public class C_icc_pcsc extends C_icc {
         
         // Return the card ATR
         ATR cardATR = m_card.getATR();
-        atrValue = C_icc.bytesToHex(cardATR.getBytes());
-        
+        atrValue = C_conv.bytesToHex(cardATR.getBytes());
+                
         return atrValue;
     }
 
+    /**
+     * Performs the smart-card EMV selection based on provided AID
+     * This function will perform all the SELECT commands to the smart-card
+     * @param readerId Index of the reader
+     * @return String containing the selected AID
+     */
+    @Override
+    public String IccPerformSelection(int readerId) {
+        String selectedAID = "";        
+        return selectedAID;
+    }
 }

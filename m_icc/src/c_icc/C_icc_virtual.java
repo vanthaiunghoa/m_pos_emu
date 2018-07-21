@@ -90,5 +90,17 @@ public class C_icc_virtual extends C_icc {
     public String IccGetATR(int readerId) {
         String atrValue = CARD_ATR;
         return atrValue;
+    }   
+    
+    /**
+     * Performs the smart-card EMV selection based on provided AID
+     * This function will perform all the SELECT commands to the smart-card
+     * @param readerId Index of the reader
+     * @return String containing the selected AID
+     */
+    @Override
+    public String IccPerformSelection(int readerId) {
+        String selectedAID = "";        
+        return selectedAID;
     }    
 }
