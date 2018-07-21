@@ -1,0 +1,6 @@
+{
+    "module_name" : "m_icc",
+    "module_version": "0.1.0",
+    "ip_port": 8999,
+    "module_type" : "server"
+}
