@@ -9,11 +9,19 @@ package c_icc;
 
 import c_common.C_conv;
 import c_common.C_err;
+import c_common.C_logger_stdout;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.smartcardio.ATR;
 import javax.smartcardio.Card;
+import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CardTerminals;
+import javax.smartcardio.CommandAPDU;
+import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
 
 /**
@@ -32,6 +40,7 @@ public class C_icc_pcsc extends C_icc {
     
     private CardTerminal m_terminal;
     private Card m_card;
+    private CardChannel m_channel;
     private String readerName = "No reader";
        
     /**
@@ -95,6 +104,7 @@ public class C_icc_pcsc extends C_icc {
         try {
             // Connect to the card using every protocol ("T=0", "T=1" or "*" for both)
             m_card = m_terminal.connect("*");
+            m_channel = m_card.getBasicChannel();
         } catch (CardException ex) {
             try {
                 // Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
@@ -136,7 +146,65 @@ public class C_icc_pcsc extends C_icc {
      */
     @Override
     public String IccPerformSelection(int readerId) {
-        String selectedAID = "";        
+        String selectedAID = null;
+        int aid_nb = 0;
+        
+        // List of AID
+        byte[] valueCB = {(byte)0xA0, 0x00, 0x00, 0x00, 0x42, 0x10, 0x10};
+        byte[] valueMC = {(byte)0xA0, 0x00, 0x00, 0x00, 0x04, 0x10, 0x10};
+        byte[] valueV  = {(byte)0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10};
+        
+        ArrayList<C_aid> aidList = new ArrayList<>(C_aid.AID_MAX_NUMBER);
+        aidList.add(new C_aid ("CB",        valueCB , (byte)0xFE, (byte)0x01));
+        aidList.add(new C_aid ("MasterCard",valueMC , (byte)0x7F, (byte)0x01));
+        aidList.add(new C_aid ("VISA",      valueV  , (byte)0x7F, (byte)0x01));
+        
+        // Start selection
+        for (int i = 0; i < aidList.size(); i++) {
+            ResponseAPDU rspIcc = IccSendSelectCommand(aidList.get(i));
+            if(rspIcc.getSW() == 0x9000)
+            {
+                selectedAID = aidList.get(i).m_name;
+                aid_nb++;
+            }
+        }
+
+        // Check number of AIDs in common
+        C_logger_stdout.LogInfo(moduleName, "nbAid=" + aid_nb);
+        
         return selectedAID;
+    }
+    
+    /**
+     * Sends a SELECT (INS=A4) command to the smart card
+     * @param aid Parameter of C_aid type containing the AID to select
+     * @return ResponseAPDU containing the response
+     */
+    private ResponseAPDU IccSendSelectCommand(C_aid aid) {
+        ResponseAPDU rsp;
+        // Construct APDU with CLA INS P1 P2 + BODY
+        CommandAPDU cmd = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid.m_aid);
+        
+        // Send Select command
+        rsp = IccSendApduCommand(cmd);
+   
+        return rsp;
+    }
+    
+    /**
+     * Sends a command to the smart card
+     * @param command CommandAPDU containing the APDU command to send
+     * @return ResponseAPDU containing the smart card response
+     */
+    private ResponseAPDU IccSendApduCommand(CommandAPDU command) {
+        ResponseAPDU answer = null;
+        try {
+            C_logger_stdout.LogInfo(moduleName, "IccCmd=" + command.toString());
+            answer = m_channel.transmit(command);
+            C_logger_stdout.LogInfo(moduleName, "IccRsp=" + answer.toString());
+        } catch (CardException ex) {
+            Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return answer;                
     }
 }

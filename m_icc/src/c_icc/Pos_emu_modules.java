@@ -47,6 +47,14 @@ public class Pos_emu_modules {
             retIcc = m_icc.IccConnectSmartCard(1);
             if (C_err.Icc.ERR_ICC_OK == retIcc) {
                 C_logger_stdout.LogInfo(module_name, "Card Connected - ATR=" + m_icc.IccGetATR(1));
+                
+                // Perform selection
+                String response = m_icc.IccPerformSelection(0);
+                if (response == null) {
+                    C_logger_stdout.LogInfo(module_name, "No AID in common");
+                } else {
+                    C_logger_stdout.LogInfo(module_name, "Selected AID is " + response);                    
+                }
             } else {
                 if (C_err.Icc.ERR_ICC_NO_CARD == retIcc) {
                     C_logger_stdout.LogWarning(module_name, "No card present");
