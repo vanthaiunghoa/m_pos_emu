@@ -106,4 +106,11 @@ public abstract class C_icc extends C_module {
      * @return String containing the selected AID
      */
     public abstract String IccPerformSelection(int readerId);
+    
+    /**
+     * Reads all the data in an EMV smart card (read BER TLV tags content)
+     * @param readerId Index of the reader
+     * @return String containing the card PAN
+     */
+    public abstract String IccReadCard(int readerId);
 }

@@ -103,4 +103,16 @@ public class C_icc_virtual extends C_icc {
         String selectedAID = "";        
         return selectedAID;
     }    
+
+    /**
+     * Reads all the data in an EMV smart card (read BER TLV tags content)
+     * @param readerId Index of the reader
+     * @return String containing the card PAN
+     */
+    @Override
+    public String IccReadCard(int readerId) {
+        String pan = "";
+        
+        return pan;
+    }
 }

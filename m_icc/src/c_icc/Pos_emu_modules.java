@@ -25,7 +25,8 @@ public class Pos_emu_modules {
         // Create ICC module
         C_icc m_icc;
         C_err.Icc retIcc;
-        
+        String response = "";
+
         // According to the parameter, use PC/SC or virtual Smart-Card
         if (smartCardType == C_icc.SmartCardManagementType.SMARTCARD_PCSC) {
             m_icc = new C_icc_pcsc("m_icc");
@@ -49,11 +50,14 @@ public class Pos_emu_modules {
                 C_logger_stdout.LogInfo(module_name, "Card Connected - ATR=" + m_icc.IccGetATR(1));
                 
                 // Perform selection
-                String response = m_icc.IccPerformSelection(0);
+                response = m_icc.IccPerformSelection(0);
                 if (response == null) {
                     C_logger_stdout.LogInfo(module_name, "No AID in common");
                 } else {
-                    C_logger_stdout.LogInfo(module_name, "Selected AID is " + response);                    
+                    C_logger_stdout.LogInfo(module_name, "Selected AID is " + response);    
+                    
+                    // Perform card reading
+                    response = m_icc.IccReadCard(0);
                 }
             } else {
                 if (C_err.Icc.ERR_ICC_NO_CARD == retIcc) {
