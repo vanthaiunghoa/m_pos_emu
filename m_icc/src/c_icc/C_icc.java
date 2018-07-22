@@ -93,6 +93,12 @@ public abstract class C_icc extends C_module {
     public abstract C_err.Icc IccConnectSmartCard(int readerId);
     
     /**
+     * Disconnect from the card
+     * @param readerId Index of the reader
+     */
+    public abstract void IccDisconnect(int readerId);
+    
+    /**
      * Returns the ATR of the connected card
      * @param readerId Index of the reader
      * @return String containing the card's ATR

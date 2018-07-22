@@ -21,6 +21,7 @@ public class C_conv {
 
     /**
      * Convert a string to an hexadecimal string
+     * "11AABB33" becomes "3131414142423333"
      * @param arg String to convert
      * @return String in hexa format
      */

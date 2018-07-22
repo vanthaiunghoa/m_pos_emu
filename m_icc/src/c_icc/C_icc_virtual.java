@@ -65,6 +65,15 @@ public class C_icc_virtual extends C_icc {
     }
 
     /**
+     * Disconnect from the card
+     * @param readerId Index of the reader
+     */
+    @Override
+    public void IccDisconnect(int readerId) {
+        
+    }
+    
+    /**
      * Connects to a smart-card
      * @param readerId Identifier of the reader to use (integer)
      * @return  Index on the smart-card, if negative, an error occured

@@ -58,6 +58,9 @@ public class Pos_emu_modules {
                     
                     // Perform card reading
                     response = m_icc.IccReadCard(0);
+                    
+                    // Disconnect
+                    m_icc.IccDisconnect(0);
                 }
             } else {
                 if (C_err.Icc.ERR_ICC_NO_CARD == retIcc) {
