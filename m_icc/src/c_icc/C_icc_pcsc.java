@@ -47,7 +47,13 @@ public class C_icc_pcsc extends C_icc {
     private Card m_card;
     private CardChannel m_channel;
     private String readerName = "No reader";
-       
+    private int m_aid_nb;
+    private byte[] m_selectedAid;
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // CONSTRUCTOR
+    ///////////////////////////////////////////////////////////////////////////
+    
     /**
      * Constructor of the module
      * @param name Name of the module
@@ -56,6 +62,10 @@ public class C_icc_pcsc extends C_icc {
         super(name);
         nReaderIndex = 0;        
     }
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // PUBLIC FUNCTIONS
+    ///////////////////////////////////////////////////////////////////////////
     
     /**
      * Returns the name of the connected reader
@@ -74,6 +84,11 @@ public class C_icc_pcsc extends C_icc {
     @Override
     public C_err.Icc IccConnectReader(String szReaderName) {
         C_err.Icc nRet = C_err.Icc.ERR_ICC_OK;
+
+        // Deactivate T0 and T1 GetResponse as it sends the same CLA as 
+        // the command. While GetResponse is always with CLA=0x00
+	System.setProperty("sun.security.smartcardio.t0GetResponse", "false");
+	System.setProperty("sun.security.smartcardio.t1GetResponse", "false");
         
         // Create reader Factory
         TerminalFactory terminalFactory = TerminalFactory.getDefault();
@@ -85,7 +100,6 @@ public class C_icc_pcsc extends C_icc {
             readerName = m_terminal.toString();
             nReaderIndex++;
         } catch (CardException ex) {
-//            Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
             nRet = C_err.Icc.ERR_ICC_NO_READER;
         }
                
@@ -94,11 +108,10 @@ public class C_icc_pcsc extends C_icc {
 
     /**
      * Connects to a smart-card
-     * @param readerId Identifier of the reader to use (integer)
      * @return  Index on the smart-card, if negative, an error occured
      */
     @Override
-    public C_err.Icc IccConnectSmartCard(int readerId) {
+    public C_err.Icc IccConnectSmartCard() {
         C_err.Icc nRet = C_err.Icc.ERR_ICC_OK;
         
         // Check if reader is connected
@@ -129,10 +142,9 @@ public class C_icc_pcsc extends C_icc {
 
     /**
      * Disconnect from the card
-     * @param readerId Index of the reader
      */
     @Override
-    public void IccDisconnect(int readerId) {
+    public void IccDisconnect() {
         try {
             m_card.disconnect(true);
         } catch (CardException ex) {
@@ -142,11 +154,10 @@ public class C_icc_pcsc extends C_icc {
     
     /**
      * Returns the ATR of the connected card
-     * @param readerId Index of the reader
      * @return String containing the card's ATR
      */
     @Override
-    public String IccGetATR(int readerId) {
+    public String IccGetATR() {
         String atrValue;
         
         // Return the card ATR
@@ -159,12 +170,90 @@ public class C_icc_pcsc extends C_icc {
     /**
      * Performs the smart-card EMV selection based on provided AID
      * This function will perform all the SELECT commands to the smart-card
-     * @param readerId Index of the reader
      * @return String containing the selected AID
      */
     @Override
-    public String IccPerformSelection(int readerId) {
-        String selectedAID = null;
+    public String IccPerformSelection() {
+        C_aid myAid;
+        m_selectedAid = null;
+        
+        // First try PSE selection
+        myAid = IccPerformPseSelection();
+        if (myAid == null) {
+            // PSE is not present (or empty), so try explicit selection
+            myAid = IccPerformExplicitSelection();
+        }
+        m_selectedAid = myAid.m_aid;
+        
+        // Perform final selection
+        
+        // Check number of AIDs in common
+        C_logger_stdout.LogInfo(moduleName, "nbAid=" + m_aid_nb);
+        
+        // Perform Final selection
+        if (m_aid_nb > 0) {
+            C_logger_stdout.LogInfo(moduleName, "EMV - Final Select");
+            ResponseAPDU rspIcc = IccSendSelectCommand(m_selectedAid);
+        }
+                
+        return C_conv.bytesToHex(myAid.m_aid);
+    }
+    
+    
+    /**
+     * Performs the smart-card EMV PSE selection based on PSE AID
+     * PSE is : 1PAY.SYS.DDF01 (31 50 41 59 2E 53 59 53 2E 44 44 46 30 31)
+     * This function will perform the SELECT PSE command to the smart-card, followed by a serie of ReadRecord commands
+     * Until we get an error 
+     * @return String containing the selected AID
+     */
+    private C_aid IccPerformPseSelection() {
+        
+        C_aid myAid = null;
+        
+        // List of AID
+        byte[] valuePSE= {(byte)0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31};
+        C_aid aidPse = new C_aid ("PSE", valuePSE, (byte)0xFE, (byte)0x01);
+        
+        // Start selection
+        C_logger_stdout.LogInfo(moduleName, "EMV - Start PSE Selection");
+        ResponseAPDU rspIcc = IccSendSelectCommand(aidPse.m_aid);
+        if(rspIcc.getSW() == 0x9000)
+        {
+            // a PSE is present
+            // Parse READ-RECORDS => tag 88 in template A5 contains SFI
+            // And first record to read. Then read until an error occurs (6A83)
+            m_aid_nb = 0;
+            byte[] valueCB2= {(byte)0xA0, 0x00, 0x00, 0x00, 0x42, 0x20, 0x10};
+            myAid = new C_aid ("CB2", valueCB2, (byte)0xFE, (byte)0x01);
+            
+            // Parse the response : BER TLV format
+            byte[] sfi_to_read = IccGetBerTlvTagValueInBytes(rspIcc.getBytes(), 0x88);            
+            byte sfi = GetSfiValue(sfi_to_read[0]);
+            
+            byte record = 1;
+            int ret = 0x9000;
+            while (ret == 0x9000) {
+                C_logger_stdout.LogInfo(moduleName, "SFI=" + sfi + " - record=" + record);
+                rspIcc = IccSendReadRecordCommand(record, sfi);
+                ret = rspIcc.getSW();
+                if (ret == 0x9000) {
+                    record++;
+                    m_aid_nb++;
+                    
+                }
+            }
+        }
+        
+        return myAid;
+    }
+
+    /**
+     * Performs the smart-card EMV Explicit selection based on provided AID
+     * This function will perform all the SELECT  commands to the smart-card
+     * @return String containing the selected AID
+     */
+    private C_aid IccPerformExplicitSelection() {
         int aid_nb = 0;
         int selectedAidIndex = -1;
         
@@ -179,38 +268,28 @@ public class C_icc_pcsc extends C_icc {
         aidList.add(new C_aid ("VISA",      valueV  , (byte)0x7F, (byte)0x01));
         
         // Start selection
-        C_logger_stdout.LogInfo(moduleName, "EMV - Start Selection");
+        C_logger_stdout.LogInfo(moduleName, "EMV - Start Explicit Selection");
         for (int i = 0; i < aidList.size(); i++) {
-            ResponseAPDU rspIcc = IccSendSelectCommand(aidList.get(i));
+            ResponseAPDU rspIcc = IccSendSelectCommand(aidList.get(i).m_aid);
             if(rspIcc.getSW() == 0x9000)
             {
-                selectedAID = aidList.get(i).m_name;
-                aid_nb++;
+                m_aid_nb++;
                 selectedAidIndex = i;
             }
         }
-
-        // Check number of AIDs in common
-        C_logger_stdout.LogInfo(moduleName, "nbAid=" + aid_nb);
         
-        // Perform Final selection
-        if (aid_nb > 0) {
-            C_logger_stdout.LogInfo(moduleName, "EMV - Final Select");
-            ResponseAPDU rspIcc = IccSendSelectCommand(aidList.get(selectedAidIndex));
-        }
-        
-        return selectedAID;
+        return aidList.get(selectedAidIndex);
     }
     
     /**
      * Sends a SELECT (INS=A4) command to the smart card
-     * @param aid Parameter of C_aid type containing the AID to select
+     * @param aid byte[] containing the AID to select
      * @return ResponseAPDU containing the response
      */
-    private ResponseAPDU IccSendSelectCommand(C_aid aid) {
+    private ResponseAPDU IccSendSelectCommand(byte[] aid) {
         ResponseAPDU rsp;
         // Construct APDU with CLA INS P1 P2 + BODY
-        CommandAPDU cmd = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid.m_aid);
+        CommandAPDU cmd = new CommandAPDU(0x00, (int)0xA4, 0x04, 0x00, aid);
         
         // Send Select command
         rsp = IccSendApduCommand(cmd);
@@ -244,33 +323,19 @@ public class C_icc_pcsc extends C_icc {
      */
     private ResponseAPDU IccSendGpoCommand() {
         ResponseAPDU rsp;
-        byte[] cmd_apdu = {(byte)0x80, (byte)0xA8, 0x00, 0x00, 0x02, (byte)0x83, 0x00};
+        byte[] body_apdu = {(byte)0x83, 0x00};
+        int CLA_GPO = 0x80;
+        int INS_GPO = 0xA8;
+        
         // Construct APDU with CLA INS P1 P2 + BODY
-        CommandAPDU cmd = new CommandAPDU(cmd_apdu);
+        CommandAPDU cmd = new CommandAPDU(CLA_GPO, INS_GPO, 0x00, 0x00, body_apdu);
         
         // Send Select command
         rsp = IccSendApduCommand(cmd);
    
         return rsp;
     }
-    
-    /**
-     * Sends a command to the smart card
-     * @param command CommandAPDU containing the APDU command to send
-     * @return ResponseAPDU containing the smart card response
-     */
-    private ResponseAPDU IccSendApduCommand(CommandAPDU command) {
-        ResponseAPDU answer = null;
-        try {
-            C_logger_stdout.LogInfo(moduleName, "IccCmd=" + HexUtil.toHexString(command.getBytes()));
-            answer = m_channel.transmit(command);
-            C_logger_stdout.LogInfo(moduleName, "IccRsp=" + HexUtil.toHexString(answer.getBytes()));
-        } catch (CardException ex) {
-            Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return answer;                
-    }
-    
+       
     /**
      * Reads all the data in an EMV smart card (read BER TLV tags content)
      * 
@@ -295,11 +360,10 @@ public class C_icc_pcsc extends C_icc {
      * <p> </p>
      * <p>Example: to read the record 2 of file 3 (00011100)</p>
      * <p>- 00 B2 02 1C 02</p>
-     * @param readerId Index of the reader
      * @return String containing the card PAN
      */
     @Override
-    public String IccReadCard(int readerId) {
+    public String IccReadCard() {
         String str_pan = "";
                 
         // First perform a GPO with empty PDOL
@@ -312,18 +376,12 @@ public class C_icc_pcsc extends C_icc {
             return str_pan;
         }
         
-        // Parse the response : BER TLV format
-        BerTlvParser parser = new BerTlvParser();
-        BerTlvs tlvs = parser.parse(rsp.getBytes(), 0, rsp.getBytes().length);
-  
         // Get AIP
-        BerTag tag_aip = new BerTag((byte)0x82);
-        BerTlv aip = tlvs.find(tag_aip);
+        BerTlv aip = IccGetBerTlvTagValue(rsp.getBytes(), 0x82);
         C_logger_stdout.LogInfo(moduleName, "EMV - aip=" + aip.getHexValue());
 
         // Get AFL
-        BerTag tag_afl = new BerTag((byte)0x94);
-        BerTlv afl = tlvs.find(tag_afl);
+        BerTlv afl = IccGetBerTlvTagValue(rsp.getBytes(), 0x94);
         byte[] byte_afl = afl.getBytesValue();
         String str_afl = afl.getHexValue();
         C_logger_stdout.LogInfo(moduleName, "EMV - afl=" + str_afl);
@@ -331,15 +389,12 @@ public class C_icc_pcsc extends C_icc {
         // Each SFI is 4 bytes (so divide by 2 for ascii characters)
         int nb_files = str_afl.length() / 2;
           
-        // Create data buffers
-        List<BerTlvs> data_tlvs = new ArrayList<>(50);
-        
         // Loop in all SFI
         int i = 0;
         BerTlvParser data = new BerTlvParser();
         while (i < nb_files) {
             // Get data
-            byte sfi = (byte)(byte_afl[i++] | (byte)0x04);
+            byte sfi = (byte)(byte_afl[i++] | 0x04);
             byte start_record = byte_afl[i++];
             byte end_record = byte_afl[i++];
             i++;
@@ -349,28 +404,124 @@ public class C_icc_pcsc extends C_icc {
                 C_logger_stdout.LogInfo(moduleName, "SFI=" + sfi + " - record=" + record);
                 rsp = IccSendReadRecordCommand(record, sfi);
 
-                // Parse the response : BER TLV format
-                tlvs = data.parse(rsp.getBytes(), 0, rsp.getBytes().length);
-                
                 // Display Cardholder name
-                BerTag tag_name = new BerTag((byte)0x5F, (byte)0x20);
-                BerTlv cardholder_name = tlvs.find(tag_name);
+                BerTlv cardholder_name = IccGetBerTlvTagValue(rsp.getBytes(), 0x5F, 0x20);
                 if (cardholder_name != null) {
                     C_logger_stdout.LogInfo(moduleName, "EMV - Name=" + cardholder_name.getTextValue());
                 }
 
                 // Display PAN
-                BerTag tag_pan = new BerTag((byte)0x5A);
-                BerTlv pan = tlvs.find(tag_pan);
+                BerTlv pan = IccGetBerTlvTagValue(rsp.getBytes(), 0x5A);
                 if (pan != null) {
                     str_pan = pan.getHexValue();
                     C_logger_stdout.LogInfo(moduleName, "EMV - PAN=" + str_pan);
                 }
-                
-                data_tlvs.add(tlvs);
             }
         }       
         
         return str_pan;
     }
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // PRIVATE FUNCTIONS
+    ///////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Sends a command to the smart card
+     * This command performs an automatic GetResponse command if SW=0x61XX
+     * @param command CommandAPDU containing the APDU command to send
+     * @return ResponseAPDU containing the smart card response
+     */
+    private ResponseAPDU IccSendApduCommand(CommandAPDU command) {
+        ResponseAPDU answer = null;
+        try {
+            C_logger_stdout.LogInfo(moduleName, "IccCmd=" + HexUtil.toHexString(command.getBytes()));
+            answer = m_channel.transmit(command);
+            
+            if (answer.getSW1() == 0x61) {
+                // Perform a GetResponse command
+                answer = m_channel.transmit(new CommandAPDU(0x00, 0xC0, 0x00, 0x00, answer.getSW2()));
+            }
+            if (answer.getSW1() == 0x6C) {
+                // Perform a GetResponse command
+                byte[] newCmd = command.getBytes();
+                newCmd[4] = (byte)answer.getSW2();
+                answer = m_channel.transmit(new CommandAPDU(newCmd));
+            }
+            C_logger_stdout.LogInfo(moduleName, "IccRsp=" + HexUtil.toHexString(answer.getBytes()));
+        } catch (CardException ex) {
+            Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return answer;                
+    }
+    
+    /**
+     * Returns the SFI value to use according to red SFI
+     * @param sfi SFI red from AFL or PSE responses
+     * @return SFI to use for ReadRecords (XXXXX100)
+     */
+    private byte GetSfiValue(byte sfi) {
+        int retSfi = sfi << 3;
+        retSfi = retSfi | 0x04;
+        
+        return (byte)retSfi;
+    }
+    
+    /**
+     * Return the byte buffer containing the value of a BER TLV tag
+     * @param buffer BER TLV input buffer to parse
+     * @param tag tag to find (only for one byte tag)
+     * @return byte[] containing the value of the tag
+     */    
+    private byte[] IccGetBerTlvTagValueInBytes(byte[] buffer, int tag) {
+        return IccGetBerTlvTagValueInBytes(buffer, tag, 0);
+    }
+
+    /**
+     * Return the byte buffer containing the value of a BER TLV tag
+     * @param buffer BER TLV input buffer to parse
+     * @param tag1 First byte of the tag to find
+     * @param tag2 Second byte of the tag to find
+     * @return byte[] containing the value of the tag
+     */
+    private byte[] IccGetBerTlvTagValueInBytes(byte[] buffer, int tag1, int tag2) {
+        BerTlv tag_val = IccGetBerTlvTagValue(buffer, tag1, tag2);            
+        byte[] tag_value = tag_val.getBytesValue();        
+        return tag_value;
+    }
+
+    /**
+     * Return a BerTlv containing the value of a BER TLV tag
+     * @param buffer BER TLV input buffer to parse
+     * @param tag tag to find (only for one byte tag)
+     * @return BerTlv containing the value of the tag
+     */    
+    private BerTlv IccGetBerTlvTagValue(byte[] buffer, int tag) {
+        return IccGetBerTlvTagValue(buffer, tag, 0);
+    }
+    
+    /**
+     * Return a BerTlv containing the value of a BER TLV tag
+     * @param buffer BER TLV input buffer to parse
+     * @param tag1 First byte of the tag to find
+     * @param tag2 Second byte of the tag to find
+     * @return BerTlv containing the value of the tag
+     */
+    private BerTlv IccGetBerTlvTagValue(byte[] buffer, int tag1, int tag2) {
+        // Parse the response : BER TLV format
+        BerTlvParser parser = new BerTlvParser();
+        BerTlvs tlvs = parser.parse(buffer, 0, buffer.length);
+  
+        // Get SFI to read
+        BerTag tag;
+        if (tag2 != 0) {
+            tag = new BerTag(tag1, tag2);
+        } else {
+            tag = new BerTag(tag1);            
+        }
+        BerTlv tag_val = tlvs.find(tag);
+        
+        return tag_val;
+    }   
+    
 }
