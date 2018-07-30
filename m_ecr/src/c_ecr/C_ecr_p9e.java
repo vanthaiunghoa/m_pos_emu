@@ -101,7 +101,7 @@ public class C_ecr_p9e extends C_ecr {
 
         switch (ins) {
             case INS_F06_LIST_SOFTWARE:
-                answer = "061234";
+                answer = "3036303030313134557838323038313528AD303538313135CBD2";
                 break;
             default:
                 answer = "ERROR";
@@ -143,6 +143,16 @@ public class C_ecr_p9e extends C_ecr {
         ByteBuffer temp = ByteBuffer.allocate(C_conv.MAX_BUFFER_SIZE);
         int index = 1;
         
+        // Example 1
+        /*       01 30 36 30 30 30 31 31 34 55 78 38 32 30 38 31 35 28 AD 30 35 38 31 31 35 CB D2 10 03 F6 91        */
+        byte[] rsp = new byte[] {0x01,0x30,0x36,0x30,0x30,0x30,0x31,0x31,0x34,(byte)0x55,(byte)0x78,0x38,0x32,0x30,0x38,0x31,0x35,0x28,(byte)0xAD,0x30,0x35,0x38,0x31,0x31,0x35,(byte)0xCB,(byte)0xD2,0x10,0x03,(byte)0xF6,(byte)0x91};
+        // Example 2 - idem Example 1 without SEPA-FAST
+        /*
+        01 30 36 30 30 30 31 31 : 34 55 78 38 32 30 38 31
+        35 28 AD 24 24 24 24 32 : 34 00 00 31 37 33 33 39
+        37 33 33 33 31 39 31 30 : 33 38 39 30 32 30 39 30
+        34 31 32 10 03 02 35                              */
+
         // Header
         temp.put((byte)0x01);
         
@@ -155,6 +165,7 @@ public class C_ecr_p9e extends C_ecr {
         temp.put((byte)0x03);
 
         // Add the CRC
+        message += "03";
         crc = C_crc16.computeCRC16(message);
         temp.put(crc.getBytes());      
         index += 4;
@@ -162,7 +173,8 @@ public class C_ecr_p9e extends C_ecr {
         // Copy buffer to a correct size buffer
         ByteBuffer tmp = C_conv.byteBufferCopy(temp, index);
     
-        return tmp.array();
+        // return tmp.array();
+        return rsp; // TODO
     }
     
 }

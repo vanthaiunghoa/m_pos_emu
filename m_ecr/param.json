@@ -1,6 +1,6 @@
 {
     "module_name" : "m_ecr",
     "module_version": "0.1.1",
-    "ip_port": 8001,
+    "ip_port": 9599,
     "module_type" : "server"
 }

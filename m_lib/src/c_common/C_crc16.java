@@ -6,7 +6,7 @@
 package c_common;
 
 /**
- * C_tcp_server is the module which open a TCP/IP server and reads for an incoming message
+ * C_crc16 is a little class which provides a method to perform a CRC16
  *  
  * @author      Bulent Alacahan
  * @version     %I%, %G%

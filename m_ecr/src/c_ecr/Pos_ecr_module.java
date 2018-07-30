@@ -5,6 +5,8 @@
  */
 package c_ecr;
 
+import c_common.C_conv;
+import c_common.C_crc16;
 import c_common.C_logger_stdout;
 import c_common.C_err;
 import java.util.Arrays;
@@ -25,6 +27,20 @@ public class Pos_ecr_module {
         String response;
         byte[] rsp = new byte[2048];
         
+        /* TEST TO REMOVE TODO */
+        /*
+        String answer = "3036303030313134557838323038313528AD303538313135CBD2";
+        answer += "03";
+        String hexanswer = C_conv.toHex(answer);
+        rsp = C_conv.hexStringToByteArray(answer);
+        String crc = C_crc16.computeCRC16(rsp.toString());
+        C_logger_stdout.LogInfo("TEST", "TRAME=" + answer);
+        C_logger_stdout.LogInfo("TEST", "CRC=" + crc);
+        return;
+        */
+        /* */
+        
+        
         // Create instance of ECR class
         m_ecr = new C_ecr_p9e("m_ecr");
 
@@ -42,6 +58,7 @@ public class Pos_ecr_module {
 
         rsp = m_ecr.AnswerToEcr(response);
         C_logger_stdout.LogInfo(module_name, "Answer:" + Arrays.toString(rsp));
+
     }
 
 }

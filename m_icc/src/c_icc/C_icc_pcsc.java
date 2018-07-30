@@ -134,12 +134,31 @@ public class C_icc_pcsc extends C_icc {
     @Override
     public void IccDisconnect(int readerId) {
         try {
+            C_logger_stdout.LogInfo(moduleName, "Card disconnect");
             m_card.disconnect(true);
         } catch (CardException ex) {
             Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
+    /**
+     * Reset the smart-card (disconnect and reconnect)
+     * @param readerId Index of the reader
+     */
+    @Override
+    public void IccResetCard(int readerId) {
+        try {
+            // Reset the card before final select
+            C_logger_stdout.LogInfo(moduleName, "Card reset");
+            m_card.disconnect(true);
+            // Connect to the card using every protocol ("T=0", "T=1" or "*" for both)
+            m_card = m_terminal.connect("*");
+            m_channel = m_card.getBasicChannel();
+        } catch (CardException ex) {
+            Logger.getLogger(C_icc_pcsc.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
     /**
      * Returns the ATR of the connected card
      * @param readerId Index of the reader
@@ -167,6 +186,7 @@ public class C_icc_pcsc extends C_icc {
         String selectedAID = null;
         int aid_nb = 0;
         int selectedAidIndex = -1;
+        long prio = 0;
         
         // List of AID
         byte[] valueCB = {(byte)0xA0, 0x00, 0x00, 0x00, 0x42, 0x10, 0x10};
@@ -182,16 +202,23 @@ public class C_icc_pcsc extends C_icc {
         C_logger_stdout.LogInfo(moduleName, "EMV - Start Selection");
         for (int i = 0; i < aidList.size(); i++) {
             ResponseAPDU rspIcc = IccSendSelectCommand(aidList.get(i));
-            if(rspIcc.getSW() == 0x9000)
+            if (rspIcc.getSW() == 0x9000)
             {
-                selectedAID = aidList.get(i).m_name;
                 aid_nb++;
-                selectedAidIndex = i;
+                long aid_prio = C_conv.getUnsigned(aidList.get(i).m_priority & 0x000000FF);
+                if (aid_prio > prio) {
+                    prio = aid_prio;
+                    selectedAID = aidList.get(i).m_name;
+                    selectedAidIndex = i;
+                }
             }
         }
 
         // Check number of AIDs in common
         C_logger_stdout.LogInfo(moduleName, "nbAid=" + aid_nb);
+
+        // Reset card before final select
+        IccResetCard(0);
         
         // Perform Final selection
         if (aid_nb > 0) {

@@ -75,4 +75,13 @@ public class C_conv {
         }
         return new String(hexChars);
     }        
+    
+    /**
+     * Transform an int to an unsigned long
+     * @param signed Integer to transform to unsigned long
+     * @return unsigned long
+     */
+    public static long getUnsigned(int signed) {
+        return signed >= 0 ? signed : 2 * (long) Integer.MAX_VALUE + 2 + signed;
+    }    
 }
