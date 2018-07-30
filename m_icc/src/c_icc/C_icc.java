@@ -87,16 +87,14 @@ public abstract class C_icc extends C_module {
 
     /**
      * Connects to a smart-card
-     * @param readerId Identifier of the reader to use (integer)
      * @return  Index on the smart-card, if negative, an error occured
      */
-    public abstract C_err.Icc IccConnectSmartCard(int readerId);
+    public abstract C_err.Icc IccConnectSmartCard();
     
     /**
      * Disconnect from the card
-     * @param readerId Index of the reader
      */
-    public abstract void IccDisconnect(int readerId);
+    public abstract void IccDisconnect();
     
     /**
      * Reset the smart-card (disconnect and reconnect)
@@ -106,23 +104,20 @@ public abstract class C_icc extends C_module {
 
     /**
      * Returns the ATR of the connected card
-     * @param readerId Index of the reader
      * @return String containing the card's ATR
      */
-    public abstract String IccGetATR(int readerId);
+    public abstract String IccGetATR();
     
     /**
      * <p>Performs the smart-card EMV selection based on provided AID</p>
      * This function will perform all the SELECT commands to the smart-card
-     * @param readerId Index of the reader
      * @return String containing the selected AID
      */
-    public abstract String IccPerformSelection(int readerId);
+    public abstract String IccPerformSelection();
     
     /**
      * Reads all the data in an EMV smart card (read BER TLV tags content)
-     * @param readerId Index of the reader
      * @return String containing the card PAN
      */
-    public abstract String IccReadCard(int readerId);
+    public abstract String IccReadCard();
 }

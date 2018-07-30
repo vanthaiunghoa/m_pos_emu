@@ -66,10 +66,9 @@ public class C_icc_virtual extends C_icc {
 
     /**
      * Disconnect from the card
-     * @param readerId Index of the reader
      */
     @Override
-    public void IccDisconnect(int readerId) {
+    public void IccDisconnect() {
         
     }
     
@@ -83,11 +82,10 @@ public class C_icc_virtual extends C_icc {
     
     /**
      * Connects to a smart-card
-     * @param readerId Identifier of the reader to use (integer)
      * @return  Index on the smart-card, if negative, an error occured
      */
     @Override
-    public C_err.Icc IccConnectSmartCard(int readerId) {
+    public C_err.Icc IccConnectSmartCard() {
         C_err.Icc nRet = C_err.Icc.ERR_ICC_OK;
         
         // Check if reader is connected
@@ -100,11 +98,10 @@ public class C_icc_virtual extends C_icc {
 
     /**
      * Returns the ATR of the connected card
-     * @param readerId Index of the reader
      * @return String containing the card's ATR
      */
     @Override
-    public String IccGetATR(int readerId) {
+    public String IccGetATR() {
         String atrValue = CARD_ATR;
         return atrValue;
     }   
@@ -112,22 +109,20 @@ public class C_icc_virtual extends C_icc {
     /**
      * Performs the smart-card EMV selection based on provided AID
      * This function will perform all the SELECT commands to the smart-card
-     * @param readerId Index of the reader
      * @return String containing the selected AID
      */
     @Override
-    public String IccPerformSelection(int readerId) {
+    public String IccPerformSelection() {
         String selectedAID = "";        
         return selectedAID;
     }    
 
     /**
      * Reads all the data in an EMV smart card (read BER TLV tags content)
-     * @param readerId Index of the reader
      * @return String containing the card PAN
      */
     @Override
-    public String IccReadCard(int readerId) {
+    public String IccReadCard() {
         String pan = "";
         
         return pan;
