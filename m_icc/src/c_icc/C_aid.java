@@ -17,12 +17,14 @@ public class C_aid {
     
     public String m_name;
     public byte[] m_aid;
+    public int m_length;
     public byte m_priority;
     public byte m_asi;
     
-    public C_aid(String name, byte[] aid, byte prio, byte asi) {
+    public C_aid(String name, byte[] aid, int aid_len, byte prio, byte asi) {
         m_name = name;
         m_aid = aid;
+        m_length = aid_len;
         m_priority = prio;
         m_asi = asi;
     }

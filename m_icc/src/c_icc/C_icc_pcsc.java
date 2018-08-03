@@ -16,6 +16,7 @@ import com.payneteasy.tlv.BerTlvParser;
 import com.payneteasy.tlv.BerTlvs;
 import com.payneteasy.tlv.HexUtil;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -47,7 +48,6 @@ public class C_icc_pcsc extends C_icc {
     private Card m_card;
     private CardChannel m_channel;
     private String readerName = "No reader";
-    private int m_aid_nb;
     private byte[] m_selectedAid;
     
     ///////////////////////////////////////////////////////////////////////////
@@ -193,24 +193,35 @@ public class C_icc_pcsc extends C_icc {
      */
     @Override
     public String IccPerformSelection() {
-        C_aid myAid;
+        ArrayList<C_aid> candidateList;
+        long prio = 0;
+        C_aid myAid = null;
         m_selectedAid = null;
         
         // First try PSE selection
-        myAid = IccPerformPseSelection();
-        if (myAid == null) {
+        candidateList = IccPerformPseSelection();
+        if ((candidateList == null) || (candidateList.isEmpty())) {
             // PSE is not present (or empty), so try explicit selection
-            myAid = IccPerformExplicitSelection();
+            candidateList = IccPerformExplicitSelection();
         }
-        m_selectedAid = myAid.m_aid;
         
         // Perform final selection
         
         // Check number of AIDs in common
-        C_logger_stdout.LogInfo(moduleName, "nbAid=" + m_aid_nb);
+        C_logger_stdout.LogInfo(moduleName, "nbAid=" + candidateList.size());
+
+        for (int i=0; i<candidateList.size(); i++) {
+            long aid_prio = C_conv.getUnsigned(aidList.get(i).m_priority & 0x000000FF);
+            if (aid_prio > prio) {
+                prio = aid_prio;
+                m_selectedAid = aidList.get(i).m_aid;
+            }
+        }
+        
+        m_selectedAid = myAid.m_aid;
         
         // Perform Final selection
-        if (m_aid_nb > 0) {
+        if (m_selectedAid != null) {
             C_logger_stdout.LogInfo(moduleName, "EMV - Final Select");
             ResponseAPDU rspIcc = IccSendSelectCommand(m_selectedAid);
         }
@@ -226,13 +237,12 @@ public class C_icc_pcsc extends C_icc {
      * Until we get an error 
      * @return String containing the selected AID
      */
-    private C_aid IccPerformPseSelection() {
-        
-        C_aid myAid = null;
+    private ArrayList<C_aid> IccPerformPseSelection() {
+        ArrayList<C_aid> candidateList = new ArrayList<>(C_aid.AID_MAX_NUMBER);        
         
         // List of AID
         byte[] valuePSE= {(byte)0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31};
-        C_aid aidPse = new C_aid ("PSE", valuePSE, (byte)0xFE, (byte)0x01);
+        C_aid aidPse = new C_aid ("PSE", valuePSE, valuePSE.length, (byte)0xFE, (byte)0x01);
         
         // Start selection
         C_logger_stdout.LogInfo(moduleName, "EMV - Start PSE Selection");
@@ -242,9 +252,6 @@ public class C_icc_pcsc extends C_icc {
             // a PSE is present
             // Parse READ-RECORDS => tag 88 in template A5 contains SFI
             // And first record to read. Then read until an error occurs (6A83)
-            m_aid_nb = 0;
-            byte[] valueCB2= {(byte)0xA0, 0x00, 0x00, 0x00, 0x42, 0x20, 0x10};
-            myAid = new C_aid ("CB2", valueCB2, (byte)0xFE, (byte)0x01);
             
             // Parse the response : BER TLV format
             byte[] sfi_to_read = IccGetBerTlvTagValueInBytes(rspIcc.getBytes(), 0x88);            
@@ -258,13 +265,21 @@ public class C_icc_pcsc extends C_icc {
                 ret = rspIcc.getSW();
                 if (ret == 0x9000) {
                     record++;
-                    m_aid_nb++;
+                    int aidLength = rspIcc.getBytes()[5];
+                    byte[] theAid = new byte[16];
+                    System.arraycopy(rspIcc.getBytes(), 6, theAid, 0, aidLength);
                     
+                    // Fix priority according to the position in the list
+                    int priority = 0x7F - record;
+                    C_aid tempAid = new C_aid("AID", theAid, aidLength, (byte)priority, (byte)0x01);
+                    
+                    // Store AID in the candidate list
+                    candidateList.add(tempAid);
                 }
             }
         }
         
-        return myAid;
+        return candidateList;
     }
 
     /**
@@ -272,10 +287,8 @@ public class C_icc_pcsc extends C_icc {
      * This function will perform all the SELECT  commands to the smart-card
      * @return String containing the selected AID
      */
-    private C_aid IccPerformExplicitSelection() {
-        int aid_nb = 0;
-        int selectedAidIndex = -1;
-        long prio = 0;
+    private ArrayList<C_aid> IccPerformExplicitSelection() {
+        ArrayList<C_aid> candidateList = new ArrayList<>(C_aid.AID_MAX_NUMBER);
         
         // List of AID
         byte[] valueCB = {(byte)0xA0, 0x00, 0x00, 0x00, 0x42, 0x10, 0x10};
@@ -283,9 +296,9 @@ public class C_icc_pcsc extends C_icc {
         byte[] valueV  = {(byte)0xA0, 0x00, 0x00, 0x00, 0x03, 0x10, 0x10};
         
         ArrayList<C_aid> aidList = new ArrayList<>(C_aid.AID_MAX_NUMBER);
-        aidList.add(new C_aid ("CB",        valueCB , (byte)0xFE, (byte)0x01));
-        aidList.add(new C_aid ("MasterCard",valueMC , (byte)0x7F, (byte)0x01));
-        aidList.add(new C_aid ("VISA",      valueV  , (byte)0x7F, (byte)0x01));
+        aidList.add(new C_aid ("CB",        valueCB , valueCB.length, (byte)0xFE, (byte)0x01));
+        aidList.add(new C_aid ("MasterCard",valueMC , valueMC.length, (byte)0x7F, (byte)0x01));
+        aidList.add(new C_aid ("VISA",      valueV  , valueV.length, (byte)0x7F, (byte)0x01));
         
         // Start selection
         C_logger_stdout.LogInfo(moduleName, "EMV - Start Explicit Selection");
@@ -294,23 +307,10 @@ public class C_icc_pcsc extends C_icc {
             ResponseAPDU rspIcc = IccSendSelectCommand(aidList.get(i).m_aid);
             if (rspIcc.getSW() == 0x9000)
             {
-                aid_nb++;
-                long aid_prio = C_conv.getUnsigned(aidList.get(i).m_priority & 0x000000FF);
-                if (aid_prio > prio) {
-                    prio = aid_prio;
-                    m_selectedAid = aidList.get(i).m_aid;
-                    selectedAidIndex = i;
-                }
+                candidateList.add(aidList.get(i));
             }
         }
-
-        // Check number of AIDs in common
-        C_logger_stdout.LogInfo(moduleName, "nbAid=" + aid_nb);
-
-        // Reset card before final select
-        IccResetCard(0);
-        
-        return aidList.get(selectedAidIndex);
+        return candidateList;
     }
     
     /**
