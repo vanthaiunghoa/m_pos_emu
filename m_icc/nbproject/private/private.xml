@@ -5,6 +5,8 @@
         <group>
             <file>file:/D:/Work_BAL/java/m_pos_emu/m_icc/src/c_icc/C_icc_virtual.java</file>
             <file>file:/D:/Work_BAL/java/m_pos_emu/m_icc/src/c_icc/C_icc_pcsc.java</file>
+            <file>file:/D:/Work_BAL/java/m_pos_emu/m_icc/src/c_icc/C_icc.java</file>
+            <file>file:/D:/Work_BAL/java/m_pos_emu/m_icc/src/c_icc/Pos_emu_modules.java</file>
             <file>file:/D:/Work_BAL/java/m_pos_emu/m_icc/src/c_icc/C_aid.java</file>
         </group>
     </open-files>

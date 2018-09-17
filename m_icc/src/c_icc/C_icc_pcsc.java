@@ -16,8 +16,6 @@ import com.payneteasy.tlv.BerTlvParser;
 import com.payneteasy.tlv.BerTlvs;
 import com.payneteasy.tlv.HexUtil;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.smartcardio.ATR;
@@ -188,7 +186,7 @@ public class C_icc_pcsc extends C_icc {
 
     /**
      * Performs the smart-card EMV selection based on provided AID
-     * This function will perform all the SELECT commands to the smart-card
+     * This function will perform either PSE based selection or all the SELECT commands to the smart-card
      * @return String containing the selected AID
      */
     @Override
@@ -197,6 +195,7 @@ public class C_icc_pcsc extends C_icc {
         long prio = 0;
         C_aid myAid = null;
         m_selectedAid = null;
+        String strSelectedAid;
         
         // First try PSE selection
         candidateList = IccPerformPseSelection();
@@ -211,22 +210,31 @@ public class C_icc_pcsc extends C_icc {
         C_logger_stdout.LogInfo(moduleName, "nbAid=" + candidateList.size());
 
         for (int i=0; i<candidateList.size(); i++) {
-            long aid_prio = C_conv.getUnsigned(aidList.get(i).m_priority & 0x000000FF);
+            long aid_prio = C_conv.getUnsigned(candidateList.get(i).m_priority & 0x000000FF);
             if (aid_prio > prio) {
                 prio = aid_prio;
-                m_selectedAid = aidList.get(i).m_aid;
+                m_selectedAid = candidateList.get(i).m_aid;
             }
         }
-        
-        m_selectedAid = myAid.m_aid;
-        
+               
         // Perform Final selection
         if (m_selectedAid != null) {
             C_logger_stdout.LogInfo(moduleName, "EMV - Final Select");
             ResponseAPDU rspIcc = IccSendSelectCommand(m_selectedAid);
+            strSelectedAid = C_conv.bytesToHex(m_selectedAid);
+            
+            // Check Select Final response
+            if (rspIcc.getSW() != 0x9000) {
+                // An error occured
+                C_logger_stdout.LogInfo(moduleName, "Error with Final Select command");
+                strSelectedAid = null;            
+            }
+        } else {
+            C_logger_stdout.LogInfo(moduleName, "No AID in candidate List");
+            strSelectedAid = null;
         }
                 
-        return C_conv.bytesToHex(myAid.m_aid);
+        return strSelectedAid;
     }
     
     
@@ -266,7 +274,7 @@ public class C_icc_pcsc extends C_icc {
                 if (ret == 0x9000) {
                     record++;
                     int aidLength = rspIcc.getBytes()[5];
-                    byte[] theAid = new byte[16];
+                    byte[] theAid = new byte[aidLength];
                     System.arraycopy(rspIcc.getBytes(), 6, theAid, 0, aidLength);
                     
                     // Fix priority according to the position in the list
@@ -407,24 +415,55 @@ public class C_icc_pcsc extends C_icc {
         if (rsp.getSW() != 0x9000) {
             return str_pan;
         }
+
+        // Parse the answer to get AIP and AFL
+        byte[] gpoAnswer = rsp.getBytes();
         
-        // Get AIP
-        BerTlv aip = IccGetBerTlvTagValue(rsp.getBytes(), 0x82);
-        C_logger_stdout.LogInfo(moduleName, "EMV - aip=" + aip.getHexValue());
+        int nb_files;
+        byte[] byte_afl;
+        byte[] byte_aip = new byte[2];
+        
+        // Check if FORMAT 1 or FORMAT 2    
+        byte firstChar = gpoAnswer[0];
+        if (firstChar == (byte)0x80) {
+            // FORMAT 1 - Manage none BER-TLV response starts with 0x80
+                       
+            // Get length
+            int i = 1;
+            int aflLength = gpoAnswer[i++] - 2;           
+            
+            // Get AIP
+            System.arraycopy(gpoAnswer, i, byte_aip, 0, 2);
+            i += 2;
+            
+            // Get AFL
+            byte_afl = new byte[aflLength];
+            System.arraycopy(gpoAnswer, i, byte_afl, 0, aflLength);
+            
+            // Get number of SFI (each SFI is 4 bytes), remove 2 for AIP bytes
+            nb_files = aflLength/4;
+        } else {        
+            // FORMAT 2 - BER-TLV
+            
+            // Get AIP
+            BerTlv aip = IccGetBerTlvTagValue(rsp.getBytes(), 0x82);
+            byte_aip = aip.getBytesValue();
 
-        // Get AFL
-        BerTlv afl = IccGetBerTlvTagValue(rsp.getBytes(), 0x94);
-        byte[] byte_afl = afl.getBytesValue();
-        String str_afl = afl.getHexValue();
-        C_logger_stdout.LogInfo(moduleName, "EMV - afl=" + str_afl);
+            // Get AFL
+            BerTlv afl = IccGetBerTlvTagValue(rsp.getBytes(), 0x94);
+            byte_afl = afl.getBytesValue();
+            
+            // Each SFI is 4 bytes (so divide by 2 for ascii characters)
+            nb_files = byte_afl.length;            
+        }
 
-        // Each SFI is 4 bytes (so divide by 2 for ascii characters)
-        int nb_files = str_afl.length() / 2;
-          
+        // Log tags
+        C_logger_stdout.LogInfo(moduleName, "EMV - aip=" + C_conv.bytesToHex(byte_aip));
+        C_logger_stdout.LogInfo(moduleName, "EMV - afl=" + C_conv.bytesToHex(byte_afl));
+                  
         // Loop in all SFI
         int i = 0;
-        BerTlvParser data = new BerTlvParser();
-        while (i < nb_files) {
+        while (i < (4*nb_files)) {
             // Get data
             byte sfi = (byte)(byte_afl[i++] | 0x04);
             byte start_record = byte_afl[i++];
