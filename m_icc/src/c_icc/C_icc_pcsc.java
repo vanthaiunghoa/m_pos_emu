@@ -440,10 +440,10 @@ public class C_icc_pcsc extends C_icc {
             byte_afl = new byte[aflLength];
             System.arraycopy(gpoAnswer, i, byte_afl, 0, aflLength);
             
-            // Get number of SFI (each SFI is 4 bytes), remove 2 for AIP bytes
-            nb_files = aflLength/4;
+            // Get number of SFI (each SFI is 4 bytes)
+            nb_files = aflLength;
         } else {        
-            // FORMAT 2 - BER-TLV
+            // FORMAT 2 - BER-TLV starts with 0x77
             
             // Get AIP
             BerTlv aip = IccGetBerTlvTagValue(rsp.getBytes(), 0x82);
@@ -453,7 +453,7 @@ public class C_icc_pcsc extends C_icc {
             BerTlv afl = IccGetBerTlvTagValue(rsp.getBytes(), 0x94);
             byte_afl = afl.getBytesValue();
             
-            // Each SFI is 4 bytes (so divide by 2 for ascii characters)
+            // Each SFI is 4 bytes 
             nb_files = byte_afl.length;            
         }
 
@@ -463,7 +463,7 @@ public class C_icc_pcsc extends C_icc {
                   
         // Loop in all SFI
         int i = 0;
-        while (i < (4*nb_files)) {
+        while (i < nb_files) {
             // Get data
             byte sfi = (byte)(byte_afl[i++] | 0x04);
             byte start_record = byte_afl[i++];
