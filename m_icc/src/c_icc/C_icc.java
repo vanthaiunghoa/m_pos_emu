@@ -120,4 +120,11 @@ public abstract class C_icc extends C_module {
      * @return String containing the card PAN
      */
     public abstract String IccReadCard();
+    
+    /**
+     * Provide the PIN code to the card
+     * @param strPin String containing the PIN code to present to the card
+     * @return Status of the PIN entry
+     */
+    public abstract C_err.Icc IccPinVerify(String strPin);
 }

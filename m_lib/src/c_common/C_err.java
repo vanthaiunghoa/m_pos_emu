@@ -22,7 +22,8 @@ public class C_err {
         ERR_ICC_OK,
         ERR_ICC_NO_READER,
         ERR_ICC_NO_CARD,
-        ERR_ICC_CARD_CONNECTION
+        ERR_ICC_CARD_CONNECTION,
+        ERR_ICC_WRONG_PIN
     }
     
     /**

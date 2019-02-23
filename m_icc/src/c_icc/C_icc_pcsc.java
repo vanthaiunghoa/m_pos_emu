@@ -492,6 +492,55 @@ public class C_icc_pcsc extends C_icc {
         
         return str_pan;
     }
+
+    /**
+     * Provide the PIN code to the card
+     * @param strPin String containing the PIN code to present to the card
+     * @return Status of the PIN entry
+     */
+    @Override
+    public C_err.Icc IccPinVerify(String strPin) {
+        C_err.Icc nRet = C_err.Icc.ERR_ICC_OK;
+        ResponseAPDU rsp = null;
+        byte[] body_apdu;
+        String str_body;
+        
+        // First perform get data to know number of PIN tries
+        byte[] cmd_apdu = {(byte)0x80, (byte)0xCA, (byte)0x9F, (byte)0x17, 0x00};
+        // Construct APDU with CLA INS P1 P2 + BODY
+        CommandAPDU cmd = new CommandAPDU(cmd_apdu);
+        // Send command
+        rsp = IccSendApduCommand(cmd);
+        
+        // Present PIN to the card and check response SW1SW2
+        int CLA_PIN = (byte)0x00;
+        int INS_PIN = (byte)0x20;
+        int P2_PLAINTEXT_PIN = (byte)0x80;
+        
+        // PIN block is as follows
+        // C N P P P P P/F P/F P/F P/F P/F P/F P/F P/F F F 
+        //    C Control field 4 bit binary number with value of 0010 (Hex '2')
+        //    N PIN length 4 bit binary number with permissible values of 0100 to 1100 (Hex '4' to 'C')
+        //    P PIN digit 4 bit binary number with permissible values of 0000 to 1001 (Hex '0' to '9')
+        //    P/F PIN/filler Determined by PIN length F Filler 4 bit binary number with a value of 1111 (Hex 'F')
+        // exemple, if PIN is 1234, value will be: 241234FFFFFFFFFF
+        str_body = "2" + strPin.length() + strPin;
+        for (int i = str_body.length(); i < 16; i++) {
+            str_body += "F";
+        }
+        body_apdu = C_conv.hexStringToByteArray(str_body);
+        
+        // Construct APDU with CLA INS P1 P2 + BODY
+        cmd = new CommandAPDU(CLA_PIN, INS_PIN, 0x00, (byte)P2_PLAINTEXT_PIN, (byte[])body_apdu);
+        
+        // Send command
+        rsp = IccSendApduCommand(cmd);
+        if (rsp.getSW() != 0x9000) {
+            nRet = C_err.Icc.ERR_ICC_WRONG_PIN;
+        }   
+        
+        return nRet;
+    }    
     
     ///////////////////////////////////////////////////////////////////////////
     // PRIVATE FUNCTIONS

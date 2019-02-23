@@ -21,6 +21,9 @@ public class C_icc_virtual extends C_icc {
     // Constant for virtual informations
     private final String CARD_ATR = "3B630000112233";
     private final String READER_NAME = "Virtual Reader";
+    private final String SELECTED_AID = "A0000000421010";
+    private final String VIRTUAL_CARD_PAN_NATIXIS = "4975431234567898";
+    private final String CARD_PIN_CODE = "6789";
 
     /**
      * Index of the reader currently in use
@@ -113,7 +116,7 @@ public class C_icc_virtual extends C_icc {
      */
     @Override
     public String IccPerformSelection() {
-        String selectedAID = "";        
+        String selectedAID = SELECTED_AID;
         return selectedAID;
     }    
 
@@ -123,8 +126,24 @@ public class C_icc_virtual extends C_icc {
      */
     @Override
     public String IccReadCard() {
-        String pan = "";
-        
+        String pan = VIRTUAL_CARD_PAN_NATIXIS;
         return pan;
     }
+    
+    /**
+     * Provide the PIN code to the card
+     * @param strPin String containing the PIN code to present to the card
+     * @return Status of the PIN entry
+     */
+    @Override
+    public C_err.Icc IccPinVerify(String strPin) {
+        C_err.Icc nRet = C_err.Icc.ERR_ICC_OK;
+        
+        // Check if PIN code is correct
+        if (strPin.equals(CARD_PIN_CODE) == false) {
+            nRet =  C_err.Icc.ERR_ICC_WRONG_PIN;
+        }
+               
+        return nRet;
+    }    
 }

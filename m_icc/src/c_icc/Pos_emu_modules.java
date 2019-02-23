@@ -39,6 +39,7 @@ public class Pos_emu_modules {
     public static void main(String[] args) throws CardException {
         // Icc type
         C_icc.SmartCardManagementType smartCardType = C_icc.SmartCardManagementType.SMARTCARD_PCSC;
+        
         // Create ICC module
         C_icc m_icc;
         C_err.Icc retIcc;
@@ -46,8 +47,10 @@ public class Pos_emu_modules {
 
         // According to the parameter, use PC/SC or virtual Smart-Card
         if (smartCardType == C_icc.SmartCardManagementType.SMARTCARD_PCSC) {
+            // Create ICC smart card component based on PCSC
             m_icc = new C_icc_pcsc("m_icc");
         } else {
+            // Create virtual card (no need for a real reader)
             m_icc = new C_icc_virtual("m_icc");
         }
         
@@ -69,12 +72,25 @@ public class Pos_emu_modules {
                 // Perform selection
                 response = m_icc.IccPerformSelection();
                 if (response == null) {
-                    C_logger_stdout.LogInfo(module_name, "No AID in common");
+                    C_logger_stdout.LogWarning(module_name, "No AID in common");
                 } else {
                     C_logger_stdout.LogInfo(module_name, "Selected AID is " + response);    
                     
                     // Perform card reading
                     response = m_icc.IccReadCard();
+                    if (response == null) {
+                        C_logger_stdout.LogError(module_name, "Error reading card data");
+                    } else {
+                        C_logger_stdout.LogInfo(module_name, "CARD PAN is " + response);
+                        
+                        // Check the PIN code
+                        retIcc = m_icc.IccPinVerify("8467");
+                        if (C_err.Icc.ERR_ICC_OK == retIcc) {
+                            C_logger_stdout.LogInfo(module_name, "PIN OK");
+                        } else {
+                            C_logger_stdout.LogError(module_name, "Wrong PIN");                           
+                        }        
+                    }
                     
                     // Disconnect
                     m_icc.IccDisconnect();
