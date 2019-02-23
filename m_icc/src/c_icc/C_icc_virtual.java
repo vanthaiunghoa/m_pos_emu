@@ -38,7 +38,7 @@ public class C_icc_virtual extends C_icc {
      * Constructor of the module
      * @param name Name of the module
      */
-    C_icc_virtual(String name) {
+    public C_icc_virtual(String name) {
         super(name);
         nReaderIndex = 0;        
     }

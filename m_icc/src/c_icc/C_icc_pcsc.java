@@ -56,7 +56,7 @@ public class C_icc_pcsc extends C_icc {
      * Constructor of the module
      * @param name Name of the module
      */
-    C_icc_pcsc(String name) {
+    public C_icc_pcsc(String name) {
         super(name);
         nReaderIndex = 0;        
     }

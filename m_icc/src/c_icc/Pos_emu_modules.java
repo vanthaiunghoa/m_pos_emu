@@ -9,20 +9,7 @@ package c_icc;
 
 import c_common.C_logger_stdout;
 import c_common.C_err;
-import com.payneteasy.tlv.HexUtil;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.smartcardio.Card;
-import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
-import javax.smartcardio.CardTerminal;
-import javax.smartcardio.CardTerminals;
-import javax.smartcardio.CommandAPDU;
-import javax.smartcardio.ResponseAPDU;
-import javax.smartcardio.TerminalFactory;
-
 
 /**
  *

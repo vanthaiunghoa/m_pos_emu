@@ -40,7 +40,7 @@ public abstract class C_icc extends C_module {
      * Constructor of the module
      * @param name Name of the module
      */
-    C_icc(String name){
+    public C_icc(String name){
         super(name);
     }
 
