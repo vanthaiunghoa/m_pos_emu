@@ -86,6 +86,18 @@ public abstract class C_icc extends C_module {
     public abstract C_err.Icc IccConnectReader(String szReaderName);
 
     /**
+     * Check if card present or not
+     * @return  Boolean = true if card is present, = false is absent
+     */
+    public abstract boolean IccIsCardPresent();
+
+    /**
+     * Set card presence (in fact, insert or remove card virtually; not used for PCSC card)
+     * @param pres =true if card is inserted, =false if card is removed
+     */
+    public abstract void IccSetCardPresent(boolean pres);
+    
+    /**
      * Connects to a smart-card
      * @return  Index on the smart-card, if negative, an error occured
      */

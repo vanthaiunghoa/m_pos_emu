@@ -2,12 +2,6 @@
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
-        <group>
-            <file>file:/C:/Work_GIT/m_pos_emu/m_lib/src/c_common/C_param.java</file>
-            <file>file:/C:/Work_GIT/m_pos_emu/m_lib/src/c_common/C_conv.java</file>
-            <file>file:/C:/Work_GIT/m_pos_emu/m_lib/src/c_common/C_err.java</file>
-            <file>file:/C:/Work_GIT/m_pos_emu/m_lib/src/c_common/C_module.java</file>
-            <file>file:/C:/Work_GIT/m_pos_emu/m_lib/src/c_common/C_tcp_server.java</file>
-        </group>
+        <group/>
     </open-files>
 </project-private>

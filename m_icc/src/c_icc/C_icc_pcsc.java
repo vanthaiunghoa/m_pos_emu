@@ -139,6 +139,30 @@ public class C_icc_pcsc extends C_icc {
     }
 
     /**
+     * Check if card present or not
+     * @return  Boolean = true if card is present, = false is absent
+     */
+    @Override
+    public boolean IccIsCardPresent() {
+        boolean cardPres;
+        try {
+            cardPres = m_terminal.isCardPresent();
+        } catch (CardException ex1) {
+            cardPres = false;
+        }
+
+        return cardPres;
+    }
+
+    /**
+     * This function has no meaning with a real card, it is only for virtual cards
+     * @param pres RFU
+     */
+    @Override
+    public void IccSetCardPresent(boolean pres) {
+    }
+    
+    /**
      * Disconnect from the card
      */
     @Override

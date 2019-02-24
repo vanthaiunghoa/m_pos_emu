@@ -33,6 +33,10 @@ public class C_icc_virtual extends C_icc {
      * String containing the name of the reader currently connected
      */
     private String readerName = "No reader";
+    /**
+     * Card presence
+     */
+    private boolean cardPresence = false;
        
     /**
      * Constructor of the module
@@ -82,7 +86,25 @@ public class C_icc_virtual extends C_icc {
     @Override
     public void IccResetCard(int readerId) {
     }    
-    
+
+    /**
+     * Check if card present or not
+     * @return  Boolean = true if card is present, = false is absent
+     */
+    @Override
+    public boolean IccIsCardPresent() {
+        return cardPresence;
+    }
+
+    /**
+     * Set card presence (in fact, insert or remove card virtually)
+     * @param pres =true if card is inserted, =false if card is removed
+     */
+    @Override
+    public void IccSetCardPresent(boolean pres) {
+        cardPresence = pres;
+    }
+
     /**
      * Connects to a smart-card
      * @return  Index on the smart-card, if negative, an error occured
