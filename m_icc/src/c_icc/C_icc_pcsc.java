@@ -16,6 +16,7 @@ import com.payneteasy.tlv.BerTlvParser;
 import com.payneteasy.tlv.BerTlvs;
 import com.payneteasy.tlv.HexUtil;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.smartcardio.ATR;
@@ -92,11 +93,18 @@ public class C_icc_pcsc extends C_icc {
         TerminalFactory terminalFactory = TerminalFactory.getDefault();
 	CardTerminals cardTerminals = terminalFactory.terminals();
         
+        List<CardTerminal> myCardTerminal;
+        
         // Connect to reader and get its name
         try {
-            m_terminal = cardTerminals.list().get(0);
-            readerName = m_terminal.toString();
-            nReaderIndex++;
+            myCardTerminal = cardTerminals.list();
+            if (!myCardTerminal.isEmpty()) {
+                m_terminal = myCardTerminal.get(0);
+                readerName = m_terminal.toString();
+                nReaderIndex++;
+            } else {
+                nRet = C_err.Icc.ERR_ICC_NO_READER;                
+            }
         } catch (CardException ex) {
             nRet = C_err.Icc.ERR_ICC_NO_READER;
         }
